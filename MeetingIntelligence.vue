@@ -5,7 +5,7 @@
       <!-- Header -->
       <header class="text-center space-y-2">
         <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight text-indigo-700">
-          Meeting Intelligence
+          AI議事録・タスク抽出チェッカー
         </h1>
         <p class="text-gray-500 text-sm md:text-base">
           AIが会議メモを解析し、「要約」「決定事項」「ToDo」を自動抽出します。
@@ -128,6 +128,39 @@
         </div>
 
       </section>
+
+      <!-- Omikuji Section -->
+      <section class="bg-white rounded-2xl shadow-sm border border-pink-100 p-6 text-center space-y-4 hover:shadow-md transition-shadow">
+        <h2 class="text-xl font-bold text-gray-800 flex items-center justify-center">
+          <span class="text-2xl mr-2">⛩️</span> 今日の会議運勢おみくじ
+        </h2>
+        <p class="text-gray-500 text-sm">会議の前に運試し！今日の会議はどうなる？</p>
+        
+        <div class="h-28 flex flex-col items-center justify-center bg-pink-50/50 rounded-xl mx-auto max-w-sm border border-pink-50">
+          <div v-if="isDrawingFortune" class="animate-bounce text-5xl">
+            🥠
+          </div>
+          <div v-else-if="currentFortune" class="text-5xl font-extrabold tracking-widest animate-fade-in-up" :class="{
+            'text-red-500': currentFortune === '大吉',
+            'text-orange-500': currentFortune === '中吉' || currentFortune === '小吉',
+            'text-green-600': currentFortune === '末吉',
+            'text-purple-600': currentFortune === '凶' || currentFortune === '大凶'
+          }">
+            {{ currentFortune }}
+          </div>
+          <div v-else class="text-5xl opacity-40 grayscale">
+            🥠
+          </div>
+        </div>
+
+        <button
+          @click="drawFortune"
+          :disabled="isDrawingFortune"
+          class="px-8 py-3 bg-gradient-to-r from-red-400 to-rose-500 hover:from-red-500 hover:to-rose-600 text-white font-bold rounded-full shadow-sm transition-all focus:ring-2 focus:ring-rose-400 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed mx-auto transform hover:scale-105 active:scale-95"
+        >
+          {{ currentFortune ? 'もう一度引く' : 'おみくじを引く' }}
+        </button>
+      </section>
     </div>
     
     <!-- Copy Notification Toast -->
@@ -154,6 +187,23 @@ const isLoading = ref(false);
 const error = ref(null);
 const results = ref(null);
 const showCopyNotification = ref(false);
+
+// ========== Omikuji State ==========
+const fortunes = ['大吉', '中吉', '小吉', '末吉', '凶', '大凶'];
+const currentFortune = ref(null);
+const isDrawingFortune = ref(false);
+
+const drawFortune = () => {
+  if (isDrawingFortune.value) return;
+  isDrawingFortune.value = true;
+  currentFortune.value = null;
+  // 演出のためのタメ
+  setTimeout(() => {
+    const randomIndex = Math.floor(Math.random() * fortunes.length);
+    currentFortune.value = fortunes[randomIndex];
+    isDrawingFortune.value = false;
+  }, 800);
+};
 
 // 環境変数からAPIキーを取得 (Viteの import.meta.env を使用)
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
