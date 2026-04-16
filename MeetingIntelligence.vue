@@ -14,19 +14,7 @@
 
       <!-- Input Section -->
       <section class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
-        <div>
-          <label for="api-key" class="block text-sm font-semibold text-gray-700 mb-1">
-            Gemini API キー
-          </label>
-          <input
-            id="api-key"
-            v-model="apiKey"
-            type="password"
-            placeholder="AIzaSy..."
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors bg-gray-50 focus:bg-white"
-          />
-        </div>
-
+        <!-- 会議メモ入力のみに変更 -->
         <div>
           <label for="transcript" class="block text-sm font-semibold text-gray-700 mb-1">
             会議メモ / チャットログ
@@ -161,12 +149,14 @@
 import { ref, computed } from 'vue';
 
 // ========== State ==========
-const apiKey = ref('');
 const transcript = ref('');
 const isLoading = ref(false);
 const error = ref(null);
 const results = ref(null);
 const showCopyNotification = ref(false);
+
+// 環境変数からAPIキーを取得 (Viteの import.meta.env を使用)
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
 
 // ========== Constants ==========
 const MODEL_NAME = 'gemini-2.5-flash-preview-09-2025';
@@ -174,7 +164,7 @@ const SYSTEM_INSTRUCTION = "あなたはプロの議事録作成アシスタン�
 
 // ========== Computed ==========
 const isFormValid = computed(() => {
-  return apiKey.value.trim().length > 0 && transcript.value.trim().length > 0;
+  return transcript.value.trim().length > 0;
 });
 
 const hasResults = computed(() => {
@@ -241,7 +231,7 @@ const analyzeText = async () => {
   error.value = null;
   results.value = null;
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey.value.trim()}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey.trim()}`;
 
   // Structured Output(JSON Schema)を指定したGemini APIリクエストボディ
   const payload = {
