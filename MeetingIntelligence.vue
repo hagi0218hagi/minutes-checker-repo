@@ -127,39 +127,39 @@
           </div>
         </div>
 
-      </section>
+        <!-- Omikuji Section -->
+        <div class="bg-white rounded-2xl shadow-sm border border-pink-100 p-6 text-center space-y-4 hover:shadow-md transition-shadow">
+          <h2 class="text-xl font-bold text-gray-800 flex items-center justify-center">
+            <span class="text-2xl mr-2">⛩️</span> AIからのタスク運勢おみくじ
+          </h2>
+          <p class="text-gray-500 text-sm">議事録の整理お疲れ様です！これからの業務の運勢は…？</p>
+          
+          <div class="h-28 flex flex-col items-center justify-center bg-pink-50/50 rounded-xl mx-auto max-w-sm border border-pink-50 px-2 py-1">
+            <div v-if="isDrawingFortune" class="animate-bounce text-5xl">
+              🥠
+            </div>
+            <div v-else-if="currentFortune" class="flex flex-col items-center animate-fade-in-up w-full">
+              <div class="text-4xl font-extrabold tracking-widest mb-1" :class="currentFortune.color">
+                {{ currentFortune.rank }}
+              </div>
+              <div class="text-xs md:text-sm text-gray-700 font-medium">
+                {{ currentFortune.msg }}
+              </div>
+            </div>
+            <div v-else class="text-5xl opacity-40 grayscale">
+              🥠
+            </div>
+          </div>
 
-      <!-- Omikuji Section -->
-      <section class="bg-white rounded-2xl shadow-sm border border-pink-100 p-6 text-center space-y-4 hover:shadow-md transition-shadow">
-        <h2 class="text-xl font-bold text-gray-800 flex items-center justify-center">
-          <span class="text-2xl mr-2">⛩️</span> 今日の会議運勢おみくじ
-        </h2>
-        <p class="text-gray-500 text-sm">会議の前に運試し！今日の会議はどうなる？</p>
-        
-        <div class="h-28 flex flex-col items-center justify-center bg-pink-50/50 rounded-xl mx-auto max-w-sm border border-pink-50">
-          <div v-if="isDrawingFortune" class="animate-bounce text-5xl">
-            🥠
-          </div>
-          <div v-else-if="currentFortune" class="text-5xl font-extrabold tracking-widest animate-fade-in-up" :class="{
-            'text-red-500': currentFortune === '大吉',
-            'text-orange-500': currentFortune === '中吉' || currentFortune === '小吉',
-            'text-green-600': currentFortune === '末吉',
-            'text-purple-600': currentFortune === '凶' || currentFortune === '大凶'
-          }">
-            {{ currentFortune }}
-          </div>
-          <div v-else class="text-5xl opacity-40 grayscale">
-            🥠
-          </div>
+          <button
+            @click="drawFortune"
+            :disabled="isDrawingFortune"
+            class="px-8 py-3 bg-gradient-to-r from-red-400 to-rose-500 hover:from-red-500 hover:to-rose-600 text-white font-bold rounded-full shadow-sm transition-all focus:ring-2 focus:ring-rose-400 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed mx-auto transform hover:scale-105 active:scale-95"
+          >
+            {{ currentFortune ? 'もう一度引く' : 'おみくじを引く' }}
+          </button>
         </div>
 
-        <button
-          @click="drawFortune"
-          :disabled="isDrawingFortune"
-          class="px-8 py-3 bg-gradient-to-r from-red-400 to-rose-500 hover:from-red-500 hover:to-rose-600 text-white font-bold rounded-full shadow-sm transition-all focus:ring-2 focus:ring-rose-400 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed mx-auto transform hover:scale-105 active:scale-95"
-        >
-          {{ currentFortune ? 'もう一度引く' : 'おみくじを引く' }}
-        </button>
       </section>
     </div>
     
@@ -189,7 +189,14 @@ const results = ref(null);
 const showCopyNotification = ref(false);
 
 // ========== Omikuji State ==========
-const fortunes = ['大吉', '中吉', '小吉', '末吉', '凶', '大凶'];
+const fortunes = [
+  { rank: "大吉", msg: "最高の効率！全てのタスクがスムーズに完了します。", color: "text-red-600" },
+  { rank: "中吉", msg: "集中力アップ。複雑な議事録も完璧に整理できるでしょう。", color: "text-orange-500" },
+  { rank: "吉", msg: "安定した一日。ToDoの期限を再確認すると吉。", color: "text-green-600" },
+  { rank: "末吉", msg: "一歩ずつ着実に。焦らずタスクをこなしましょう。", color: "text-blue-500" },
+  { rank: "凶", msg: "予定外の割り込みに注意。深呼吸して優先順位を見直しましょう。", color: "text-purple-600" },
+  { rank: "大凶", msg: "システムトラブルの予感。データの保存はこまめに行いましょう！", color: "text-gray-500" }
+];
 const currentFortune = ref(null);
 const isDrawingFortune = ref(false);
 
@@ -280,6 +287,7 @@ const analyzeText = async () => {
   isLoading.value = true;
   error.value = null;
   results.value = null;
+  currentFortune.value = null;
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey.trim()}`;
 
@@ -338,6 +346,11 @@ const analyzeText = async () => {
       // JSONスキーマを指定しているため、テキストパーツからそのままJSONパース可能
       const responseText = data.candidates[0].content.parts[0].text;
       results.value = JSON.parse(responseText);
+      
+      // 結果表示の少し後に自動でおみくじを引く
+      setTimeout(() => {
+        drawFortune();
+      }, 500);
     } else {
       throw new Error("予期しないAPIレスポンス形式です。解析結果が空でした。");
     }
