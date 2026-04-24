@@ -92,22 +92,13 @@
       <section v-if="hasResults" class="space-y-6 opacity-0 animate-fade-in-up">
         <div class="flex justify-between items-end mb-4 border-b border-gray-200 pb-2">
           <h2 class="text-2xl font-bold text-gray-800">解析結果</h2>
-          <div class="flex items-center gap-2">
-            <button
-              @click="copyMarkdown"
-              class="text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-md text-sm font-medium flex items-center transition-colors"
-            >
-              <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
-              コピー
-            </button>
-            <button
-              @click="downloadMarkdown"
-              class="text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-md text-sm font-medium flex items-center transition-colors"
-            >
-              <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-              ダウンロード
-            </button>
-          </div>
+          <button
+            @click="copyMarkdown"
+            class="text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-md text-sm font-medium flex items-center transition-colors"
+          >
+            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+            Markdownコピー
+          </button>
         </div>
 
         <!-- Summary Card -->
@@ -411,48 +402,6 @@ const analyzeText = async () => {
   } finally {
     isLoading.value = false;
   }
-};
-
-/**
- * Markdown形式でファイルダウンロード
- */
-const downloadMarkdown = () => {
-  if (!results.value) return;
-
-  const { summary, decisions, tasks } = results.value;
-  const mdLines = [];
-  mdLines.push("# 会議サマリー");
-  mdLines.push(summary + "\n");
-  mdLines.push("## 決定事項");
-  if (decisions && decisions.length > 0) {
-    decisions.forEach(d => mdLines.push(`- ${d}`));
-  } else {
-    mdLines.push("- なし");
-  }
-  mdLines.push("");
-  mdLines.push("## ToDoリスト");
-  if (tasks && tasks.length > 0) {
-    tasks.forEach(t => mdLines.push(`- [ ] **${t.task}** (担当: ${t.owner}, 期限: ${t.due})`));
-  } else {
-    mdLines.push("- なし");
-  }
-
-  const blob = new Blob([mdLines.join('\n')], { type: 'text/markdown;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  // ファイル名: meeting_YYYYMMDD_HHMMSS.md
-  const now = new Date();
-  const ts = now.getFullYear().toString()
-    + String(now.getMonth() + 1).padStart(2, '0')
-    + String(now.getDate()).padStart(2, '0')
-    + '_'
-    + String(now.getHours()).padStart(2, '0')
-    + String(now.getMinutes()).padStart(2, '0')
-    + String(now.getSeconds()).padStart(2, '0');
-  a.href = url;
-  a.download = `meeting_${ts}.md`;
-  a.click();
-  URL.revokeObjectURL(url);
 };
 
 /**
