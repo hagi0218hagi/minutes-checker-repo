@@ -99,6 +99,39 @@
           </p>
         </div>
 
+        <!-- 出力言語 & カスタムプロンプト -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="outputLang" class="block text-sm font-semibold text-gray-700 mb-1">
+              出力言語
+            </label>
+            <select
+              id="outputLang"
+              v-model="outputLang"
+              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors bg-gray-50 focus:bg-white"
+            >
+              <option value="ja">日本語（デフォルト）</option>
+              <option value="en">English</option>
+              <option value="zh">中文</option>
+              <option value="ko">한국어</option>
+            </select>
+            <p class="mt-1 text-xs text-gray-400">入力言語に関わらず、選択した言語で出力します。</p>
+          </div>
+          <div>
+            <label for="customPrompt" class="block text-sm font-semibold text-gray-700 mb-1">
+              追加指示 <span class="text-gray-400 font-normal">（任意）</span>
+            </label>
+            <input
+              id="customPrompt"
+              v-model="customPrompt"
+              type="text"
+              placeholder="例: 技術的な観点で要約して"
+              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors bg-gray-50 focus:bg-white"
+            />
+            <p class="mt-1 text-xs text-gray-400">AIへの追加指示を自由に入力できます。</p>
+          </div>
+        </div>
+
         <div class="flex flex-col sm:flex-row justify-between items-center bg-gray-50 p-4 rounded-xl border border-gray-100">
           <p class="text-xs text-gray-500 mb-4 sm:mb-0">
             モデル: <code>gemini-2.5-flash-preview-09-2025</code>
@@ -311,6 +344,8 @@ import { ref, computed, watch } from 'vue';
 // ========== State ==========
 const transcript = ref('');
 const meetingTitle = ref('');
+const outputLang = ref('ja');
+const customPrompt = ref('');
 const isLoading = ref(false);
 const error = ref(null);
 const results = ref(null);
@@ -454,7 +489,17 @@ const drawFortune = () => {
 
 // ========== Constants ==========
 const MODEL_NAME = 'gemini-2.5-flash-preview-09-2025';
-const SYSTEM_INSTRUCTION = "あなたはプロの議事録作成アシスタントです。入力されたテキストを分析し、重要な決定事項と、具体的なアクションアイテム（ToDo）を抽出してください。返り値は、指定されたJSONスキーマに従った純粋なJSONのみを返してください。";
+
+const LANG_NAMES = { ja: '日本語', en: 'English', zh: '中文', ko: '한국어' };
+
+const buildSystemInstruction = () => {
+  const lang = LANG_NAMES[outputLang.value] || '日本語';
+  let instruction = `あなたはプロの議事録作成アシスタントです。入力されたテキストを分析し、重要な決定事項と、具体的なアクションアイテム（ToDo）を抽出してください。入力言語に関わらず、必ず${lang}で出力してください。返り値は、指定されたJSONスキーマに従った純粋なJSONのみを返してください。`;
+  if (customPrompt.value.trim()) {
+    instruction += `\n\n追加指示: ${customPrompt.value.trim()}`;
+  }
+  return instruction;
+};
 
 // ========== Computed ==========
 const isFormValid = computed(() => transcript.value.trim().length > 0);
@@ -525,7 +570,7 @@ const analyzeText = async () => {
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${userApiKey.value.trim()}`;
   const payload = {
-    system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+    system_instruction: { parts: [{ text: buildSystemInstruction() }] },
     contents: [{ parts: [{ text: transcript.value }] }],
     generationConfig: {
       response_mime_type: "application/json",
