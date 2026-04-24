@@ -14,6 +14,41 @@
 
       <!-- Input Section -->
       <section class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-6">
+        <!-- APIキー入力 -->
+        <div>
+          <label for="apiKey" class="block text-sm font-semibold text-gray-700 mb-1">
+            Gemini APIキー
+          </label>
+          <div class="relative">
+            <input
+              id="apiKey"
+              v-model="userApiKey"
+              :type="showApiKey ? 'text' : 'password'"
+              placeholder="AIzaSy..."
+              class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors bg-gray-50 focus:bg-white font-mono text-sm"
+            />
+            <button
+              @click="showApiKey = !showApiKey"
+              type="button"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              :title="showApiKey ? 'APIキーを隠す' : 'APIキーを表示'"
+            >
+              <!-- 表示アイコン -->
+              <svg v-if="!showApiKey" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+              <!-- 非表示アイコン -->
+              <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+              </svg>
+            </button>
+          </div>
+          <p class="mt-1 text-xs text-gray-400">
+            APIキーは <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="text-indigo-500 hover:underline">Google AI Studio</a> で取得できます。入力内容はブラウザ外に送信されません。
+          </p>
+        </div>
+
         <!-- 会議メモ入力のみに変更 -->
         <div>
           <label for="transcript" class="block text-sm font-semibold text-gray-700 mb-1">
@@ -34,7 +69,7 @@
           </p>
           <button
             @click="analyzeText"
-            :disabled="!isFormValid || isLoading"
+            :disabled="!isFormValid || isLoading || !userApiKey.trim()"
             class="w-full sm:w-auto px-6 py-3 bg-indigo-600 text-white font-medium rounded-lg shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex justify-center items-center space-x-2"
           >
             <svg v-if="isLoading" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -179,7 +214,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 
 // ========== State ==========
 const transcript = ref('');
@@ -187,6 +222,19 @@ const isLoading = ref(false);
 const error = ref(null);
 const results = ref(null);
 const showCopyNotification = ref(false);
+
+// ========== APIキー State ==========
+const userApiKey = ref(localStorage.getItem('gemini_api_key') || '');
+const showApiKey = ref(false);
+
+// APIキーをlocalStorageに保存（入力のたびに）
+watch(userApiKey, (val) => {
+  if (val.trim()) {
+    localStorage.setItem('gemini_api_key', val.trim());
+  } else {
+    localStorage.removeItem('gemini_api_key');
+  }
+});
 
 // ========== Omikuji State ==========
 const fortunes = [
@@ -211,9 +259,6 @@ const drawFortune = () => {
     isDrawingFortune.value = false;
   }, 800);
 };
-
-// 環境変数からAPIキーを取得 (Viteの import.meta.env を使用)
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
 
 // ========== Constants ==========
 const MODEL_NAME = 'gemini-2.5-flash-preview-09-2025';
@@ -291,7 +336,7 @@ const analyzeText = async () => {
   // 先におみくじを引く
   drawFortune();
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey.trim()}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${userApiKey.value.trim()}`;
 
   // Structured Output(JSON Schema)を指定したGemini APIリクエストボディ
   const payload = {
