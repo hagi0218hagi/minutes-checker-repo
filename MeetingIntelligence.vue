@@ -49,16 +49,40 @@
 
         <!-- 会議メモ入力 -->
         <div>
-          <label for="transcript" class="block text-sm font-semibold text-gray-700 mb-1">
-            会議メモ / チャットログ
-          </label>
+          <div class="flex justify-between items-center mb-1">
+            <label for="transcript" class="block text-sm font-semibold text-gray-700">
+              会議メモ / チャットログ
+            </label>
+            <button
+              v-if="speechSupported"
+              @click="toggleSpeech"
+              type="button"
+              :title="isRecording ? '録音を停止' : 'マイクで入力'"
+              :class="[
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
+                isRecording
+                  ? 'bg-red-100 text-red-600 hover:bg-red-200 animate-pulse'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              ]"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+              </svg>
+              {{ isRecording ? '録音中... (停止)' : '音声入力' }}
+            </button>
+          </div>
           <textarea
             id="transcript"
             v-model="transcript"
             rows="10"
             placeholder="会議のメモや議事録、チャットの履歴をここに貼り付けてください（1000文字以上でも可）"
             class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors resize-y bg-gray-50 focus:bg-white"
+            :class="{ 'border-red-400 ring-2 ring-red-200': isRecording }"
           ></textarea>
+          <p v-if="isRecording" class="mt-1 text-xs text-red-500 flex items-center gap-1">
+            <span class="inline-block w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
+            話しかけてください。テキストエリアにリアルタイムで反映されます。
+          </p>
         </div>
 
         <div class="flex flex-col sm:flex-row justify-between items-center bg-gray-50 p-4 rounded-xl border border-gray-100">
@@ -318,7 +342,61 @@ const clearHistory = () => {
   }
 };
 
-// ========== Omikuji State ==========
+// ========== 音声入力 State ==========
+const isRecording = ref(false);
+const speechSupported = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+let recognition = null;
+
+if (speechSupported) {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRecognition();
+  recognition.lang = 'ja-JP';
+  recognition.continuous = true;      // 話し続けても止まらない
+  recognition.interimResults = true;  // 途中結果もリアルタイム反映
+
+  let finalTranscript = '';
+
+  recognition.onstart = () => {
+    finalTranscript = transcript.value; // 既存テキストを保持
+    isRecording.value = true;
+  };
+
+  recognition.onresult = (event) => {
+    let interim = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const t = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        finalTranscript += t;
+      } else {
+        interim += t;
+      }
+    }
+    transcript.value = finalTranscript + interim;
+  };
+
+  recognition.onend = () => {
+    isRecording.value = false;
+  };
+
+  recognition.onerror = (event) => {
+    isRecording.value = false;
+    if (event.error !== 'aborted') {
+      error.value = `音声入力エラー: ${event.error}。マイクの許可を確認してください。`;
+    }
+  };
+}
+
+const toggleSpeech = () => {
+  if (!recognition) return;
+  if (isRecording.value) {
+    recognition.stop();
+  } else {
+    error.value = null;
+    recognition.start();
+  }
+};
+
+
 const fortunes = [
   { rank: "大吉", msg: "プロジェクトは大成功の兆し！交渉もスムーズに進むでしょう。", color: "text-red-600" },
   { rank: "中吉", msg: "チームワークが冴え渡ります。新しいアイデアが採用されるかも。", color: "text-orange-500" },
