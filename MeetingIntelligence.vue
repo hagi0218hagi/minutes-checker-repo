@@ -47,6 +47,20 @@
           </p>
         </div>
 
+        <!-- 会議タイトル入力 -->
+        <div>
+          <label for="meetingTitle" class="block text-sm font-semibold text-gray-700 mb-1">
+            会議タイトル <span class="text-gray-400 font-normal">（任意）</span>
+          </label>
+          <input
+            id="meetingTitle"
+            v-model="meetingTitle"
+            type="text"
+            placeholder="例: 2026年4月 週次定例"
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors bg-gray-50 focus:bg-white"
+          />
+        </div>
+
         <!-- 会議メモ入力 -->
         <div>
           <div class="flex justify-between items-center mb-1">
@@ -113,7 +127,10 @@
       <!-- Results Section -->
       <section v-if="hasResults" class="space-y-6 opacity-0 animate-fade-in-up">
         <div class="flex justify-between items-end mb-4 border-b border-gray-200 pb-2">
-          <h2 class="text-2xl font-bold text-gray-800">解析結果</h2>
+          <div>
+            <h2 class="text-2xl font-bold text-gray-800">解析結果</h2>
+            <p v-if="meetingTitle" class="text-sm text-indigo-600 font-medium mt-0.5">{{ meetingTitle }}</p>
+          </div>
           <div class="flex items-center gap-2">
             <button
               @click="copyMarkdown"
@@ -123,7 +140,7 @@
               コピー
             </button>
             <button
-              @click="downloadMarkdown(results)"
+              @click="downloadMarkdown(results, null, meetingTitle || null)"
               class="text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-md text-sm font-medium flex items-center transition-colors"
             >
               <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
@@ -169,12 +186,12 @@
             ToDo リスト
           </h3>
           <div class="space-y-3">
-            <div v-for="(task, index) in results.tasks" :key="'task-'+index" class="flex items-start bg-gray-50 p-3 rounded-lg border border-gray-200 hover:border-amber-300 transition-colors">
+            <div v-for="(task, index) in results.tasks" :key="'task-'+index" class="flex items-start bg-gray-50 p-3 rounded-lg border border-gray-200 hover:border-amber-300 transition-colors" :class="{ 'opacity-60': checkedTasks[index] }">
               <div class="flex-shrink-0 pt-0.5">
-                <input type="checkbox" class="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer" />
+                <input type="checkbox" v-model="checkedTasks[index]" @change="saveCheckedTasks" class="w-5 h-5 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer" />
               </div>
               <div class="ml-3 flex-grow">
-                <p class="text-gray-800 font-medium">{{ task.task }}</p>
+                <p class="text-gray-800 font-medium" :class="{ 'line-through text-gray-400': checkedTasks[index] }">{{ task.task }}</p>
                 <div class="mt-2 flex flex-wrap gap-2 text-xs">
                   <span class="inline-flex items-center px-2 py-1 rounded-md font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
                     <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
@@ -225,14 +242,15 @@
           >
             <div class="flex-grow min-w-0 mr-4">
               <p class="text-xs text-gray-400 mb-1">{{ item.date }}</p>
-              <p class="text-sm text-gray-700 font-medium truncate">{{ item.summary }}</p>
+              <p v-if="item.title" class="text-sm font-semibold text-indigo-600 truncate">{{ item.title }}</p>
+              <p class="text-sm text-gray-700 truncate">{{ item.summary }}</p>
               <div class="mt-1 flex gap-3 text-xs text-gray-400">
                 <span>決定事項 {{ item.decisions }}件</span>
                 <span>ToDo {{ item.tasks }}件</span>
               </div>
             </div>
             <button
-              @click="downloadMarkdown(item.data, item.date)"
+              @click="downloadMarkdown(item.data, item.date, item.title || null)"
               class="flex-shrink-0 text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-md text-sm font-medium flex items-center transition-colors"
             >
               <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
@@ -292,10 +310,25 @@ import { ref, computed, watch } from 'vue';
 
 // ========== State ==========
 const transcript = ref('');
+const meetingTitle = ref('');
 const isLoading = ref(false);
 const error = ref(null);
 const results = ref(null);
 const showCopyNotification = ref(false);
+
+// ========== ToDoチェック状態 ==========
+const CHECKED_KEY = 'meeting_checked_tasks';
+const checkedTasks = ref(JSON.parse(localStorage.getItem(CHECKED_KEY) || '[]'));
+
+const saveCheckedTasks = () => {
+  localStorage.setItem(CHECKED_KEY, JSON.stringify(checkedTasks.value));
+};
+
+// 解析結果が変わったらチェック状態をリセット
+watch(results, () => {
+  checkedTasks.value = [];
+  localStorage.removeItem(CHECKED_KEY);
+});
 
 // ========== APIキー State ==========
 const userApiKey = ref(localStorage.getItem('gemini_api_key') || '');
@@ -326,6 +359,7 @@ const saveToHistory = (data) => {
   const entry = {
     id: now.getTime(),
     date: dateStr,
+    title: meetingTitle.value.trim() || null,
     summary: data.summary,
     decisions: data.decisions.length,
     tasks: data.tasks.length,
@@ -427,10 +461,11 @@ const isFormValid = computed(() => transcript.value.trim().length > 0);
 const hasResults = computed(() => results.value !== null);
 
 // ========== Markdown生成ヘルパー ==========
-const buildMarkdown = (data) => {
+const buildMarkdown = (data, title = null) => {
   const { summary, decisions, tasks } = data;
   const lines = [];
-  lines.push("# 会議サマリー");
+  if (title) lines.push(`# ${title}\n`);
+  lines.push("## 会議サマリー");
   lines.push(summary + "\n");
   lines.push("## 決定事項");
   decisions && decisions.length > 0
@@ -539,13 +574,14 @@ const analyzeText = async () => {
 };
 
 /** 個別ダウンロード */
-const downloadMarkdown = (data, label = null) => {
+const downloadMarkdown = (data, label = null, title = null) => {
   if (!data) return;
-  const blob = new Blob([buildMarkdown(data)], { type: 'text/markdown;charset=utf-8' });
+  const blob = new Blob([buildMarkdown(data, title)], { type: 'text/markdown;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
+  const name = title || label;
   a.href = url;
-  a.download = `meeting_${label ? label.replace(/[/:]/g, '').replace(/\s/g, '_') : makeTimestamp()}.md`;
+  a.download = `meeting_${name ? name.replace(/[/:]/g, '').replace(/\s/g, '_') : makeTimestamp()}.md`;
   a.click();
   URL.revokeObjectURL(url);
 };
@@ -557,7 +593,7 @@ const downloadAllHistory = () => {
   history.value.forEach((item, i) => {
     if (i > 0) lines.push('\n---\n');
     lines.push(`<!-- ${item.date} -->`);
-    lines.push(buildMarkdown(item.data));
+    lines.push(buildMarkdown(item.data, item.title || null));
   });
   const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -572,7 +608,7 @@ const downloadAllHistory = () => {
 const copyMarkdown = async () => {
   if (!results.value) return;
   try {
-    await navigator.clipboard.writeText(buildMarkdown(results.value));
+    await navigator.clipboard.writeText(buildMarkdown(results.value, meetingTitle.value.trim() || null));
     showCopyNotification.value = true;
     setTimeout(() => { showCopyNotification.value = false; }, 3000);
   } catch (err) {
